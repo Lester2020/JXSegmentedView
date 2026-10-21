@@ -136,9 +136,7 @@ open class JXSegmentedListContainerView: UIView, JXSegmentedViewListContainer, J
             if #available(iOS 11.0, *) {
                 scrollView.contentInsetAdjustmentBehavior = .never
             }
-            if segmentedViewShouldRTLLayout() {
-                segmentedView(horizontalFlipForView: scrollView)
-            }
+            segmentedViewApplyMirrorPagingLayout(to: scrollView)
             containerVC.view.addSubview(scrollView)
         }else if type == .collectionView {
             collectionView.isPagingEnabled = true
@@ -155,10 +153,7 @@ open class JXSegmentedListContainerView: UIView, JXSegmentedViewListContainer, J
             if #available(iOS 11.0, *) {
                 self.collectionView.contentInsetAdjustmentBehavior = .never
             }
-            if segmentedViewShouldRTLLayout() {
-                collectionView.semanticContentAttribute = .forceLeftToRight
-                segmentedView(horizontalFlipForView: collectionView)
-            }
+            segmentedViewApplyMirrorPagingLayout(to: collectionView)
             containerVC.view.addSubview(collectionView)
             //让外部统一访问scrollView
             scrollView = collectionView
@@ -174,6 +169,28 @@ open class JXSegmentedListContainerView: UIView, JXSegmentedViewListContainer, J
                 break
             }
             next = next?.next
+        }
+    }
+
+    open override func didMoveToWindow() {
+        super.didMoveToWindow()
+        guard window != nil else { return }
+        resyncPagingRTLLayout()
+    }
+
+    open override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
+        super.traitCollectionDidChange(previousTraitCollection)
+        guard previousTraitCollection?.layoutDirection != traitCollection.layoutDirection else { return }
+        resyncPagingRTLLayout()
+    }
+
+    /// 入窗或布局方向变化后重刷。`commonInit` 可能早于宿主写入 appearance / trait。
+    private func resyncPagingRTLLayout() {
+        segmentedViewApplyMirrorPagingLayout(to: scrollView)
+        // collection 类型的列表挂在已翻转的 cell 里，再翻一次会把文字镜像掉
+        guard type == .scrollView else { return }
+        for list in validListDict.values {
+            segmentedViewApplyEmbeddedListRTLLayout(to: list.listView())
         }
     }
 
@@ -275,9 +292,7 @@ open class JXSegmentedListContainerView: UIView, JXSegmentedViewListContainer, J
             list.listView().frame = CGRect(x: CGFloat(index)*scrollView.bounds.size.width, y: 0, width: scrollView.bounds.size.width, height: scrollView.bounds.size.height)
             scrollView.addSubview(list.listView())
             
-            if segmentedViewShouldRTLLayout() {
-                segmentedView(horizontalFlipForView: list.listView())
-            }
+            segmentedViewApplyEmbeddedListRTLLayout(to: list.listView())
         }else {
             let cell = collectionView.cellForItem(at: IndexPath(item: index, section: 0))
             cell?.contentView.subviews.forEach { $0.removeFromSuperview() }
@@ -315,9 +330,7 @@ open class JXSegmentedListContainerView: UIView, JXSegmentedViewListContainer, J
                     list.listView().frame = CGRect(x: CGFloat(index)*scrollView.bounds.size.width, y: 0, width: scrollView.bounds.size.width, height: scrollView.bounds.size.height)
                     scrollView.addSubview(list.listView())
                     
-                    if segmentedViewShouldRTLLayout() {
-                        segmentedView(horizontalFlipForView: list.listView())
-                    }
+                    segmentedViewApplyEmbeddedListRTLLayout(to: list.listView())
                 }
                 list.listWillAppear?()
                 if let vc = list as? UIViewController {

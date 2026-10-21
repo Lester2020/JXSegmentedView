@@ -234,11 +234,14 @@ open class JXSegmentedView: UIView, JXSegmentedViewRTLCompatible {
         if #available(iOS 11.0, *) {
             collectionView.contentInsetAdjustmentBehavior = .never
         }
-        if segmentedViewShouldRTLLayout() {
-            collectionView.semanticContentAttribute = .forceLeftToRight
-            segmentedView(horizontalFlipForView: collectionView)
-        }
+        segmentedViewApplyMirrorPagingLayout(to: collectionView)
         addSubview(collectionView)
+    }
+
+    open override func didMoveToWindow() {
+        super.didMoveToWindow()
+        guard window != nil else { return }
+        segmentedViewApplyMirrorPagingLayout(to: collectionView)
     }
 
     open override func willMove(toSuperview newSuperview: UIView?) {
