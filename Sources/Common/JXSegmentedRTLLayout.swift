@@ -54,6 +54,18 @@ public extension JXSegmentedViewRTLCompatible {
         segmentedViewSetMirrored(true, on: view)
     }
 
+    /// 带 `scaleX(-1)` 时直接改 `frame` 会把翻转清掉。先卸掉再设 frame，调用方负责把翻转加回去。
+    func segmentedViewSetFrame(_ frame: CGRect, on view: UIView) {
+        let mirrored = view.transform.a < 0
+        if mirrored {
+            view.transform = .identity
+        }
+        view.frame = frame
+        if mirrored {
+            view.transform = CGAffineTransform(scaleX: -1, y: 1)
+        }
+    }
+
     /// 只在状态变化时改 transform，避免 `layoutSubviews` 里来回触发布局。
     func segmentedViewSetMirrored(_ mirrored: Bool, on view: UIView?) {
         guard let view else { return }

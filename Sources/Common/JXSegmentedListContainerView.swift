@@ -187,7 +187,11 @@ open class JXSegmentedListContainerView: UIView, JXSegmentedViewListContainer, J
     /// 入窗或布局方向变化后重刷。`commonInit` 可能早于宿主写入 appearance / trait。
     private func resyncPagingRTLLayout() {
         segmentedViewApplyMirrorPagingLayout(to: scrollView, host: self)
-        // collection 类型的列表挂在已翻转的 cell 里，再翻一次会把文字镜像掉
+        restoreEmbeddedListMirrors()
+    }
+
+    /// 分页 scroll 翻转后，scroll 类型的列表再翻一次，文字才正。collection 类型的列表挂在已翻转的 cell 里，不能再翻。
+    private func restoreEmbeddedListMirrors() {
         guard type == .scrollView else { return }
         for list in validListDict.values {
             segmentedViewApplyEmbeddedListRTLLayout(to: list.listView(), host: self)
@@ -202,17 +206,23 @@ open class JXSegmentedListContainerView: UIView, JXSegmentedViewListContainer, J
             return
         }
         if type == .scrollView {
-            if scrollView.frame == CGRect.zero || scrollView.bounds.size != bounds.size {
+            // 带 scaleX(-1) 时改 frame 会清掉翻转。只在尺寸变化时卸掉翻转设 frame，末尾再装回去。
+            let pagingSizeChanged = scrollView.frame == .zero || scrollView.bounds.size != bounds.size
+            if pagingSizeChanged {
+                scrollView.transform = .identity
                 scrollView.frame = bounds
                 scrollView.contentSize = CGSize(width: scrollView.bounds.size.width*CGFloat(count), height: scrollView.bounds.size.height)
                 for (index, list) in validListDict {
-                    list.listView().frame = CGRect(x: CGFloat(index)*scrollView.bounds.size.width, y: 0, width: scrollView.bounds.size.width, height: scrollView.bounds.size.height)
+                    let listView = list.listView()
+                    listView.transform = .identity
+                    listView.frame = CGRect(x: CGFloat(index)*scrollView.bounds.size.width, y: 0, width: scrollView.bounds.size.width, height: scrollView.bounds.size.height)
                 }
                 scrollView.contentOffset = CGPoint(x: CGFloat(currentIndex)*scrollView.bounds.size.width, y: 0)
-            }else {
-                scrollView.frame = bounds
+            } else {
                 scrollView.contentSize = CGSize(width: scrollView.bounds.size.width*CGFloat(count), height: scrollView.bounds.size.height)
             }
+            segmentedViewApplyMirrorPagingLayout(to: scrollView, host: self)
+            restoreEmbeddedListMirrors()
         }else {
             if collectionView.frame == CGRect.zero || collectionView.bounds.size != bounds.size {
                 collectionView.frame = bounds
@@ -289,9 +299,11 @@ open class JXSegmentedListContainerView: UIView, JXSegmentedViewListContainer, J
         }
         validListDict[index] = list
         if type == .scrollView {
-            list.listView().frame = CGRect(x: CGFloat(index)*scrollView.bounds.size.width, y: 0, width: scrollView.bounds.size.width, height: scrollView.bounds.size.height)
+            segmentedViewSetFrame(
+                CGRect(x: CGFloat(index)*scrollView.bounds.size.width, y: 0, width: scrollView.bounds.size.width, height: scrollView.bounds.size.height),
+                on: list.listView()
+            )
             scrollView.addSubview(list.listView())
-            
             segmentedViewApplyEmbeddedListRTLLayout(to: list.listView(), host: self)
         }else {
             let cell = collectionView.cellForItem(at: IndexPath(item: index, section: 0))
@@ -327,9 +339,11 @@ open class JXSegmentedListContainerView: UIView, JXSegmentedViewListContainer, J
             validListDict[index] = list
             if type == .scrollView {
                 if list.listView().superview == nil {
-                    list.listView().frame = CGRect(x: CGFloat(index)*scrollView.bounds.size.width, y: 0, width: scrollView.bounds.size.width, height: scrollView.bounds.size.height)
+                    segmentedViewSetFrame(
+                        CGRect(x: CGFloat(index)*scrollView.bounds.size.width, y: 0, width: scrollView.bounds.size.width, height: scrollView.bounds.size.height),
+                        on: list.listView()
+                    )
                     scrollView.addSubview(list.listView())
-                    
                     segmentedViewApplyEmbeddedListRTLLayout(to: list.listView(), host: self)
                 }
                 list.listWillAppear?()
