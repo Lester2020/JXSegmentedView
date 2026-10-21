@@ -234,14 +234,26 @@ open class JXSegmentedView: UIView, JXSegmentedViewRTLCompatible {
         if #available(iOS 11.0, *) {
             collectionView.contentInsetAdjustmentBehavior = .never
         }
-        segmentedViewApplyMirrorPagingLayout(to: collectionView)
+        applyChannelBarMirror()
         addSubview(collectionView)
     }
 
     open override func didMoveToWindow() {
         super.didMoveToWindow()
         guard window != nil else { return }
-        segmentedViewApplyMirrorPagingLayout(to: collectionView)
+        applyChannelBarMirror()
+    }
+
+    open override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
+        super.traitCollectionDidChange(previousTraitCollection)
+        guard previousTraitCollection?.layoutDirection != traitCollection.layoutDirection else { return }
+        applyChannelBarMirror()
+    }
+
+    /// 镜像分页，并让 FlowLayout 按钉死的 LTR 重排。
+    private func applyChannelBarMirror() {
+        segmentedViewApplyMirrorPagingLayout(to: collectionView, host: self)
+        collectionView.collectionViewLayout.invalidateLayout()
     }
 
     open override func willMove(toSuperview newSuperview: UIView?) {

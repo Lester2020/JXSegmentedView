@@ -39,10 +39,19 @@ open class JXSegmentedBaseCell: UICollectionViewCell, JXSegmentedViewRTLCompatib
     }
 
     open func commonInit() {
-        if segmentedViewShouldRTLLayout() {
-            segmentedView(horizontalFlipForView: self)
-            segmentedView(horizontalFlipForView: contentView)
-        }
+        syncMirrorWithPagingLayout()
+    }
+
+    open override func layoutSubviews() {
+        syncMirrorWithPagingLayout()
+        super.layoutSubviews()
+    }
+
+    /// 分页容器翻转后，Cell 再翻一次，文字才是正的。创建时方向可能还没写上，布局时再对齐一次。
+    private func syncMirrorWithPagingLayout() {
+        let mirrored = JXSegmentedRTLContext.mirrorPaging
+        segmentedViewSetMirrored(mirrored, on: self)
+        segmentedViewSetMirrored(mirrored, on: contentView)
     }
 
     open func canStartSelectedAnimation(itemModel: JXSegmentedBaseItemModel, selectedType: JXSegmentedViewItemSelectedType) -> Bool {
